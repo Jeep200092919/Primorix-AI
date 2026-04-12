@@ -41,8 +41,8 @@ router.post('/send', requireAuth, async (req, res) => {
     conv = createConversation(user.id, 'New Conversation', 'primorix-1.0');
   }
 
-  // Fetch context: recent messages + user memory
-  const recentMessages = getRecentMessages(conv.id, 25);
+  // Fetch context: fewer messages in code mode to stay within TPM limits
+  const recentMessages = getRecentMessages(conv.id, chatMode === 'code' ? 6 : 25);
   const memoryFacts = user.is_guest ? [] : getUserMemory(user.id);
 
   // Save user message to DB

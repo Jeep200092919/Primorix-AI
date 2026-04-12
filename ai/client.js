@@ -135,7 +135,7 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
     model,
     messages,
     temperature: isCodeMode ? 0.3 : 0.9,
-    max_tokens: 8192,
+    max_tokens: isCodeMode ? 4096 : 8192,
     top_p: 0.95,
   });
 
