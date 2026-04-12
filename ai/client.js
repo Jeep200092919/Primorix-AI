@@ -1,63 +1,37 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
-const API_KEY = process.env.GOOGLE_AI_API_KEY || 'AIzaSyDSMgE_ZjAeA6VSwcbzvkhmvuXYYNM1in8';
+const API_KEY = process.env.GROQ_API_KEY || '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';
+const MODEL_ID = 'llama-3.3-70b-versatile';
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+const groq = new Groq({ apiKey: API_KEY });
 
-// Priority-ordered list: tries best available model first
-const MODEL_PRIORITY = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-latest',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
-  'gemma-3-27b-it',
-  'gemini-1.5-flash-latest',
-];
-
-// The model name exposed to the user
-const USER_FACING_MODELS = {
-  'primorix-1.0': null, // will be resolved on startup
-};
-
-let resolvedModel = null;
-let resolvedModelId = null;
+let initialized = false;
 
 async function discoverModel() {
-  for (const modelId of MODEL_PRIORITY) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelId });
-      // Quick probe: start a chat and send a tiny message to verify model works
-      const chat = model.startChat({ history: [] });
-      const result = await chat.sendMessage('hi');
-      const text = result.response.text();
-      if (text) {
-        console.log(`[Primorix AI] Using model: ${modelId}`);
-        resolvedModel = model;
-        resolvedModelId = modelId;
-        USER_FACING_MODELS['primorix-1.0'] = modelId;
-        return modelId;
-      }
-    } catch (err) {
-      console.log(`[Primorix AI] Model ${modelId} not available: ${err.message}`);
+  try {
+    // Quick probe to verify API key and model work
+    const response = await groq.chat.completions.create({
+      model: MODEL_ID,
+      messages: [{ role: 'user', content: 'hi' }],
+      max_tokens: 10,
+    });
+    if (response.choices?.[0]?.message?.content) {
+      initialized = true;
+      console.log(`[Primorix AI] Using model: ${MODEL_ID}`);
+      return MODEL_ID;
     }
+  } catch (err) {
+    throw new Error(`Model ${MODEL_ID} not available: ${err.message}`);
   }
-  throw new Error('No compatible AI model found. Please check your API key and network access.');
-}
-
-function getModel() {
-  if (!resolvedModel) {
-    throw new Error('AI model not initialized. Call discoverModel() first.');
-  }
-  return resolvedModel;
+  throw new Error('No compatible AI model found. Please check your API key.');
 }
 
 function getResolvedModelId() {
-  return resolvedModelId;
+  return MODEL_ID;
 }
 
 function buildSystemPrompt(user, memoryFacts, memorySummary) {
   const isGuest = user.is_guest;
-  const userName = isGuest ? 'a guest user' : user.username;
 
   let memorySection = '';
   if (!isGuest && memoryFacts && memoryFacts.length > 0) {
@@ -86,53 +60,52 @@ Your personality: Curious, helpful, slightly witty, never condescending. You gen
 }
 
 async function sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage }) {
-  const model = getModel();
-  const systemText = buildSystemPrompt(user, memoryFacts, memorySummary);
+  if (!initialized) {
+    throw new Error('AI model not initialized. Call discoverModel() first.');
+  }
 
-  // Inject system prompt as the first history exchange.
-  // This approach works for ALL models including Gemma, which does not
-  // support the `systemInstruction` parameter in startChat().
-  const history = [
-    {
-      role: 'user',
-      parts: [{ text: `<system>\n${systemText}\n</system>` }],
-    },
-    {
-      role: 'model',
-      parts: [{ text: "Understood. I'm Primorix AI — I have memory capabilities and will follow these instructions throughout our conversation." }],
-    },
-    // Actual conversation history follows
+  const systemPrompt = buildSystemPrompt(user, memoryFacts, memorySummary);
+
+  // Build messages array: system prompt + conversation history + new user message
+  const messages = [
+    { role: 'system', content: systemPrompt },
     ...conversationHistory.map(msg => ({
-      role: msg.role === 'model' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
+      role: msg.role === 'model' ? 'assistant' : 'user',
+      content: msg.content,
     })),
+    { role: 'user', content: userMessage },
   ];
 
-  const chat = model.startChat({
-    history,
-    generationConfig: {
-      temperature: 0.9,
-      topP: 0.95,
-      maxOutputTokens: 8192,
-    },
+  const response = await groq.chat.completions.create({
+    model: MODEL_ID,
+    messages,
+    temperature: 0.9,
+    max_tokens: 8192,
+    top_p: 0.95,
   });
 
-  const result = await chat.sendMessage(userMessage);
-  return result.response.text();
+  return response.choices[0].message.content;
 }
 
 async function generateConversationTitle(firstUserMessage, firstAiResponse) {
-  const model = getModel();
-  const prompt = `Based on this conversation exchange, generate a short, descriptive title (max 6 words, no quotes):
+  try {
+    const response = await groq.chat.completions.create({
+      model: MODEL_ID,
+      messages: [
+        {
+          role: 'user',
+          content: `Based on this conversation exchange, generate a short, descriptive title (max 6 words, no quotes, no punctuation at the end):
 
 User: ${firstUserMessage.slice(0, 200)}
 AI: ${firstAiResponse.slice(0, 200)}
 
-Title:`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const title = result.response.text().trim().replace(/^["']|["']$/g, '');
+Title:`,
+        },
+      ],
+      max_tokens: 20,
+      temperature: 0.5,
+    });
+    const title = response.choices[0].message.content.trim().replace(/^["']|["']$/g, '');
     return title.slice(0, 60) || 'New Conversation';
   } catch {
     return firstUserMessage.slice(0, 40) || 'New Conversation';
@@ -141,13 +114,18 @@ Title:`;
 
 async function extractMemoryFacts(user, recentMessages) {
   if (recentMessages.length < 4) return [];
-  const model = getModel();
 
   const conversation = recentMessages
     .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
     .join('\n');
 
-  const prompt = `Analyze this conversation and extract important facts about the user that should be remembered for future conversations. Only extract genuinely meaningful personal information (name, occupation, location, preferences, important life events, ongoing projects, etc.).
+  try {
+    const response = await groq.chat.completions.create({
+      model: MODEL_ID,
+      messages: [
+        {
+          role: 'user',
+          content: `Analyze this conversation and extract important facts about the user that should be remembered for future conversations. Only extract genuinely meaningful personal information (name, occupation, location, preferences, important life events, ongoing projects, etc.).
 
 Conversation:
 ${conversation.slice(0, 3000)}
@@ -155,11 +133,13 @@ ${conversation.slice(0, 3000)}
 Return ONLY a JSON array of objects with "key" and "value" fields. Example:
 [{"key": "name", "value": "Alex"}, {"key": "occupation", "value": "software engineer"}]
 
-If no meaningful facts found, return an empty array: []`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+If no meaningful facts found, return an empty array: []`,
+        },
+      ],
+      max_tokens: 500,
+      temperature: 0.3,
+    });
+    const text = response.choices[0].message.content.trim();
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const facts = JSON.parse(jsonMatch[0]);
@@ -173,10 +153,8 @@ If no meaningful facts found, return an empty array: []`;
 
 module.exports = {
   discoverModel,
-  getModel,
   getResolvedModelId,
   sendMessage,
   generateConversationTitle,
   extractMemoryFacts,
-  USER_FACING_MODELS,
 };
