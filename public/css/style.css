@@ -862,7 +862,7 @@ body.code-mode .message-input::placeholder {
 }
 .input-wrapper {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   background: var(--surface);
   border: 1px solid var(--border-light);
