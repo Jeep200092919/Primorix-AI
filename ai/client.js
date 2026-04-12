@@ -139,7 +139,14 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
     top_p: 0.95,
   });
 
-  return response.choices[0].message.content;
+  let content = response.choices[0].message.content;
+
+  // Strip <think>...</think> blocks that Qwen3 emits in code mode
+  if (isCodeMode) {
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  }
+
+  return content;
 }
 
 async function generateConversationTitle(firstUserMessage, firstAiResponse) {
