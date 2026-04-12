@@ -50,7 +50,18 @@ const API = {
   },
 
   // Chat
-  sendMessage(message, conversationId, mode = 'chat') {
+  sendMessage(message, conversationId, mode = 'chat', file = null) {
+    if (file) {
+      const form = new FormData();
+      form.append('message', message || '');
+      if (conversationId) form.append('conversationId', String(conversationId));
+      form.append('mode', mode);
+      form.append('file', file);
+      const headers = {};
+      if (this._token) headers['Authorization'] = `Bearer ${this._token}`;
+      return fetch('/api/chat/send', { method: 'POST', headers, body: form })
+        .then(res => res.json().then(d => { if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`); return d; }));
+    }
     return this._request('POST', '/api/chat/send', { message, conversationId, mode });
   },
   getMemory() {

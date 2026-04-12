@@ -8,6 +8,7 @@ const App = {
   conversations: [],
   isSending: false,
   codeMode: false,
+  attachedFile: null,
 
   // ── Storage ───────────────────────────────────────────────
 
@@ -182,6 +183,40 @@ const App = {
     document.getElementById('user-type').textContent = user.isGuest ? 'Guest session' : 'Account';
   },
 
+  setAttachedFile(file) {
+    this.attachedFile = file;
+    const preview   = document.getElementById('file-preview');
+    const img       = document.getElementById('file-preview-img');
+    const icon      = document.getElementById('file-preview-icon');
+    const nameEl    = document.getElementById('file-preview-name');
+    const attachBtn = document.getElementById('attach-btn');
+    const sendBtn   = document.getElementById('send-btn');
+
+    nameEl.textContent = file.name;
+    preview.classList.remove('hidden');
+    attachBtn.classList.add('has-file');
+    sendBtn.disabled = false;
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = e => { img.src = e.target.result; img.classList.remove('hidden'); icon.classList.add('hidden'); };
+      reader.readAsDataURL(file);
+    } else {
+      img.classList.add('hidden');
+      icon.classList.remove('hidden');
+    }
+  },
+
+  clearAttachedFile() {
+    this.attachedFile = null;
+    document.getElementById('file-preview').classList.add('hidden');
+    document.getElementById('file-preview-img').classList.add('hidden');
+    document.getElementById('file-preview-img').src = '';
+    document.getElementById('attach-btn').classList.remove('has-file');
+    const input = document.getElementById('message-input');
+    document.getElementById('send-btn').disabled = !input.value.trim();
+  },
+
   toggleCodeMode() {
     this.codeMode = !this.codeMode;
     const btn = document.getElementById('code-mode-btn');
@@ -243,6 +278,23 @@ const App = {
     // Code Mode toggle
     document.getElementById('code-mode-btn').addEventListener('click', () => {
       this.toggleCodeMode();
+    });
+
+    // File attach button
+    document.getElementById('attach-btn').addEventListener('click', () => {
+      document.getElementById('file-input').click();
+    });
+
+    // File input change
+    document.getElementById('file-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) this.setAttachedFile(file);
+      e.target.value = ''; // reset so same file can be re-selected
+    });
+
+    // Remove file
+    document.getElementById('file-remove-btn').addEventListener('click', () => {
+      this.clearAttachedFile();
     });
 
     // Memory button
@@ -415,7 +467,7 @@ const App = {
       messages.innerHTML = '';
 
       conv.messages.forEach(msg => {
-        this.appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, false);
+        this.appendMessage(msg.role === 'user' ? 'user' : 'ai', msg.content, false, null);
       });
 
       this.scrollToBottom(false);
@@ -443,20 +495,23 @@ const App = {
   async sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
-    if (!text || this.isSending) return;
+    const file = this.attachedFile;
+    if (!text && !file) return;
+    if (this.isSending) return;
 
     // Show chat view
     document.getElementById('welcome-screen').classList.add('hidden');
     const messages = document.getElementById('messages-container');
     messages.classList.remove('hidden');
 
-    // Clear input
+    // Clear input and file
     input.value = '';
     input.style.height = 'auto';
     document.getElementById('send-btn').disabled = true;
+    this.clearAttachedFile();
 
-    // Add user message to UI
-    this.appendMessage('user', text);
+    // Add user message to UI (with optional file preview)
+    this.appendMessage('user', text, true, file);
 
     // Add typing indicator
     const typingId = 'typing-' + Date.now();
@@ -480,7 +535,7 @@ const App = {
     this.isSending = true;
 
     try {
-      const data = await API.sendMessage(text, this.currentConvId, this.codeMode ? 'code' : 'chat');
+      const data = await API.sendMessage(text, this.currentConvId, this.codeMode ? 'code' : 'chat', file);
 
       // Remove typing indicator
       typingEl.remove();
@@ -511,7 +566,7 @@ const App = {
 
   // ── Message Rendering ─────────────────────────────────────
 
-  appendMessage(role, content, animate = true) {
+  appendMessage(role, content, animate = true, file = null) {
     const messages = document.getElementById('messages-container');
     const el = document.createElement('div');
     el.className = `message ${role}`;
@@ -529,12 +584,27 @@ const App = {
       ? this.renderMarkdown(content)
       : `<p>${this.escHtml(content).replace(/\n/g, '<br/>')}</p>`;
 
+    // Build file attachment preview HTML
+    let fileHtml = '';
+    if (file && role === 'user') {
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        fileHtml = `<img class="message-img-preview" src="${url}" alt="${this.escHtml(file.name)}" />`;
+      } else {
+        fileHtml = `
+          <div class="message-file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ${this.escHtml(file.name)}
+          </div>`;
+      }
+    }
+
     el.innerHTML = `
       <div class="message-header">
         <div class="message-avatar">${avatarText}</div>
         <span class="message-sender">${this.escHtml(userName)}</span>
       </div>
-      <div class="message-content">${renderedContent}</div>
+      <div class="message-content">${fileHtml}${renderedContent}</div>
     `;
 
     // Add copy buttons to code blocks

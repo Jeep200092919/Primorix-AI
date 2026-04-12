@@ -149,6 +149,63 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
   return content;
 }
 
+// ── File-aware message (images, PDFs, text files) ────────────────────────────
+
+async function sendMessageWithFile({ user, memoryFacts, memorySummary, conversationHistory, userMessage, file, mode = 'chat' }) {
+  const { type, content, mimeType, name } = file;
+
+  // ── Image: use a vision model ──────────────────────────────────────────────
+  if (type === 'image') {
+    const isCodeMode = mode === 'code';
+    const systemPrompt = isCodeMode
+      ? buildCodeSystemPrompt(user)
+      : buildChatSystemPrompt(user, memoryFacts, memorySummary);
+
+    const historyMessages = conversationHistory.map(msg => ({
+      role: msg.role === 'model' ? 'assistant' : 'user',
+      content: msg.content,
+    }));
+
+    const userContent = [
+      { type: 'image_url', image_url: { url: `data:${mimeType};base64,${content}` } },
+      { type: 'text', text: userMessage || 'What is in this image? Describe it in detail.' },
+    ];
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...historyMessages,
+      { role: 'user', content: userContent },
+    ];
+
+    for (const vModel of VISION_MODELS) {
+      try {
+        const response = await chatGroq.chat.completions.create({
+          model: vModel,
+          messages,
+          max_tokens: 2048,
+          temperature: 0.7,
+        });
+        console.log(`[Primorix AI] Vision handled by: ${vModel}`);
+        return response.choices[0].message.content;
+      } catch (err) {
+        console.warn(`[Vision] ${vModel} failed: ${err.message}`);
+      }
+    }
+    throw new Error('No vision model available. Please describe the image in text instead.');
+  }
+
+  // ── PDF / text file: inject content into the message ──────────────────────
+  const fileContext = type === 'pdf'
+    ? `[Attached PDF: ${name}]\n\n${content}`
+    : `[Attached file: ${name}]\n\`\`\`\n${content}\n\`\`\``;
+
+  const combinedMessage = userMessage
+    ? `${userMessage}\n\n${fileContext}`
+    : fileContext;
+
+  return sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage: combinedMessage, mode });
+}
+
 async function generateConversationTitle(firstUserMessage, firstAiResponse) {
   if (!chatInitialized) return firstUserMessage.slice(0, 40) || 'New Conversation';
   try {
@@ -195,10 +252,18 @@ async function extractMemoryFacts(user, recentMessages) {
   return [];
 }
 
+// ── Vision models (for image uploads) ───────────────────────────────────────
+const VISION_MODELS = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'llama-3.2-11b-vision-preview',
+  'llama-3.2-90b-vision-preview',
+];
+
 module.exports = {
   discoverModel,
   getResolvedModelId,
   sendMessage,
+  sendMessageWithFile,
   generateConversationTitle,
   extractMemoryFacts,
   CHAT_MODEL,

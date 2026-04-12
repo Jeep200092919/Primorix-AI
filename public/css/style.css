@@ -908,6 +908,94 @@ body.code-mode .message-input::placeholder {
 .send-btn:active:not(:disabled) { transform: scale(0.97); }
 .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* File preview above input */
+.file-preview {
+  margin-bottom: 8px;
+}
+.file-preview-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  max-width: 320px;
+}
+.file-preview-img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.file-preview-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.file-preview-name {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.file-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  flex-shrink: 0;
+  border-radius: 4px;
+  transition: color var(--transition);
+}
+.file-remove-btn:hover { color: var(--danger); }
+
+/* Attach button */
+.attach-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color var(--transition);
+}
+.attach-btn:hover { color: var(--accent-hover); }
+.attach-btn.has-file { color: var(--accent); }
+
+/* File attachment in message bubble */
+.message-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.message-file svg { flex-shrink: 0; }
+.message-img-preview {
+  max-width: 280px;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  display: block;
+  object-fit: cover;
+}
+
 .input-note {
   font-size: 11px;
   color: var(--text-dim);
