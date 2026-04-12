@@ -87,17 +87,28 @@ Your personality: Curious, helpful, slightly witty, never condescending. You gen
 
 async function sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage }) {
   const model = getModel();
+  const systemText = buildSystemPrompt(user, memoryFacts, memorySummary);
 
-  const systemInstruction = buildSystemPrompt(user, memoryFacts, memorySummary);
-
-  // Build chat history for context (convert from DB format to Gemini format)
-  const history = conversationHistory.map(msg => ({
-    role: msg.role === 'model' ? 'model' : 'user',
-    parts: [{ text: msg.content }],
-  }));
+  // Inject system prompt as the first history exchange.
+  // This approach works for ALL models including Gemma, which does not
+  // support the `systemInstruction` parameter in startChat().
+  const history = [
+    {
+      role: 'user',
+      parts: [{ text: `<system>\n${systemText}\n</system>` }],
+    },
+    {
+      role: 'model',
+      parts: [{ text: "Understood. I'm Primorix AI — I have memory capabilities and will follow these instructions throughout our conversation." }],
+    },
+    // Actual conversation history follows
+    ...conversationHistory.map(msg => ({
+      role: msg.role === 'model' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    })),
+  ];
 
   const chat = model.startChat({
-    systemInstruction,
     history,
     generationConfig: {
       temperature: 0.9,
