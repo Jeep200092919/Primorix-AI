@@ -4,10 +4,14 @@ const API_KEY = process.env.GOOGLE_AI_API_KEY || 'AIzaSyDSMgE_ZjAeA6VSwcbzvkhmvu
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Priority-ordered list: try name variations for Gemini 3.0 Flash
+// Priority-ordered list: tries best available model first
 const MODEL_PRIORITY = [
-  'gemini-3.0-flash',
-  'gemini-3.0-flash-latest',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemma-3-27b-it',
+  'gemini-1.5-flash-latest',
 ];
 
 // The model name exposed to the user
