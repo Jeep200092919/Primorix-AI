@@ -50,8 +50,8 @@ const API = {
   },
 
   // Chat
-  sendMessage(message, conversationId) {
-    return this._request('POST', '/api/chat/send', { message, conversationId });
+  sendMessage(message, conversationId, mode = 'chat') {
+    return this._request('POST', '/api/chat/send', { message, conversationId, mode });
   },
   getMemory() {
     return this._request('GET', '/api/chat/memory');

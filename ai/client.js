@@ -1,40 +1,67 @@
 const Groq = require('groq-sdk');
 
-const API_KEY = process.env.GROQ_API_KEY || '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';
-const MODEL_ID = 'llama-3.3-70b-versatile';
+// ── Chat mode: llama-3.3-70b-versatile ──────────────────────────────────────
+const CHAT_API_KEY = process.env.GROQ_API_KEY || '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';
+const CHAT_MODEL   = 'llama-3.3-70b-versatile';
 
-const groq = new Groq({ apiKey: API_KEY });
+// ── Code mode: qwen/qwen3-32b ────────────────────────────────────────────────
+const CODE_API_KEY = process.env.GROQ_CODE_API_KEY || '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';
+const CODE_MODEL   = 'qwen/qwen3-32b';
 
-let initialized = false;
+const chatGroq = new Groq({ apiKey: CHAT_API_KEY });
+const codeGroq = new Groq({ apiKey: CODE_API_KEY });
+
+let chatInitialized = false;
+let codeInitialized = false;
 
 async function discoverModel() {
+  // Probe chat model
   try {
-    // Quick probe to verify API key and model work
-    const response = await groq.chat.completions.create({
-      model: MODEL_ID,
+    const r = await chatGroq.chat.completions.create({
+      model: CHAT_MODEL,
       messages: [{ role: 'user', content: 'hi' }],
       max_tokens: 10,
     });
-    if (response.choices?.[0]?.message?.content) {
-      initialized = true;
-      console.log(`[Primorix AI] Using model: ${MODEL_ID}`);
-      return MODEL_ID;
+    if (r.choices?.[0]?.message?.content) {
+      chatInitialized = true;
+      console.log(`[Primorix AI] Chat model ready: ${CHAT_MODEL}`);
     }
   } catch (err) {
-    throw new Error(`Model ${MODEL_ID} not available: ${err.message}`);
+    console.warn(`[Primorix AI] Chat model unavailable: ${err.message}`);
   }
-  throw new Error('No compatible AI model found. Please check your API key.');
+
+  // Probe code model
+  try {
+    const r = await codeGroq.chat.completions.create({
+      model: CODE_MODEL,
+      messages: [{ role: 'user', content: 'hi' }],
+      max_tokens: 10,
+    });
+    if (r.choices?.[0]?.message?.content) {
+      codeInitialized = true;
+      console.log(`[Primorix AI] Code model ready: ${CODE_MODEL}`);
+    }
+  } catch (err) {
+    console.warn(`[Primorix AI] Code model unavailable: ${err.message}`);
+  }
+
+  if (!chatInitialized && !codeInitialized) {
+    throw new Error('No AI models available. Please check your API keys.');
+  }
+
+  return { chat: CHAT_MODEL, code: CODE_MODEL };
 }
 
-function getResolvedModelId() {
-  return MODEL_ID;
+function getResolvedModelId(mode = 'chat') {
+  return mode === 'code' ? CODE_MODEL : CHAT_MODEL;
 }
 
-function buildSystemPrompt(user, memoryFacts, memorySummary) {
+// ── System prompts ────────────────────────────────────────────────────────────
+
+function buildChatSystemPrompt(user, memoryFacts, memorySummary) {
   const isGuest = user.is_guest;
-
   let memorySection = '';
-  if (!isGuest && memoryFacts && memoryFacts.length > 0) {
+  if (!isGuest && memoryFacts?.length > 0) {
     const factLines = memoryFacts.map(f => `  - ${f.memory_key}: ${f.memory_value}`).join('\n');
     memorySection = `\nWHAT YOU KNOW ABOUT THIS USER:\n${factLines}\n`;
   } else if (!isGuest && memorySummary) {
@@ -49,24 +76,52 @@ CORE BEHAVIOR:
 - Be warm, helpful, and genuinely intelligent
 - Reference things you know about the user naturally when relevant — don't be robotic about it
 - If the user tells you something personal or important, remember it (the system automatically stores key facts)
-- If you learn the user's name, preferences, or important life details, weave them naturally into conversation
 - For guest users: encourage them to create an account so you can truly remember them across sessions
 - Be concise unless depth is requested
 - Format code blocks with triple backticks and the language name
-- You can reason through complex problems step by step
 - If asked to remember something specific, confirm that you've noted it
 
 Your personality: Curious, helpful, slightly witty, never condescending. You genuinely care about giving good answers.`;
 }
 
-async function sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage }) {
-  if (!initialized) {
+function buildCodeSystemPrompt(user) {
+  const name = user.is_guest ? 'the user' : user.username;
+  return `You are Primorix AI in Code Mode — an expert software engineer and coding assistant helping ${name}.
+
+YOUR CAPABILITIES:
+- Write clean, efficient, production-ready code in any language
+- Debug and fix errors with clear explanations of the root cause
+- Review code for bugs, security issues, and performance improvements
+- Explain complex programming concepts clearly
+- Suggest best practices, design patterns, and architecture
+
+CODE GUIDELINES:
+- Always use fenced code blocks with the correct language tag (e.g. \`\`\`python)
+- Write complete, working code — never truncate or use placeholders like "// rest of code here"
+- Add brief inline comments only where the logic isn't obvious
+- Prefer modern syntax and idiomatic patterns for each language
+- Point out potential edge cases, security issues, or performance concerns
+- If the user has an error, diagnose the root cause before providing the fix
+
+Keep explanations focused and technical. You are talking to someone who wants working code, not filler.`;
+}
+
+// ── Core functions ────────────────────────────────────────────────────────────
+
+async function sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage, mode = 'chat' }) {
+  const isCodeMode = mode === 'code';
+  const client     = isCodeMode ? codeGroq : chatGroq;
+  const model      = isCodeMode ? CODE_MODEL : CHAT_MODEL;
+  const ready      = isCodeMode ? codeInitialized : chatInitialized;
+
+  if (!ready) {
     throw new Error('AI model not initialized. Call discoverModel() first.');
   }
 
-  const systemPrompt = buildSystemPrompt(user, memoryFacts, memorySummary);
+  const systemPrompt = isCodeMode
+    ? buildCodeSystemPrompt(user)
+    : buildChatSystemPrompt(user, memoryFacts, memorySummary);
 
-  // Build messages array: system prompt + conversation history + new user message
   const messages = [
     { role: 'system', content: systemPrompt },
     ...conversationHistory.map(msg => ({
@@ -76,10 +131,10 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
     { role: 'user', content: userMessage },
   ];
 
-  const response = await groq.chat.completions.create({
-    model: MODEL_ID,
+  const response = await client.chat.completions.create({
+    model,
     messages,
-    temperature: 0.9,
+    temperature: isCodeMode ? 0.3 : 0.9,
     max_tokens: 8192,
     top_p: 0.95,
   });
@@ -88,20 +143,14 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
 }
 
 async function generateConversationTitle(firstUserMessage, firstAiResponse) {
+  if (!chatInitialized) return firstUserMessage.slice(0, 40) || 'New Conversation';
   try {
-    const response = await groq.chat.completions.create({
-      model: MODEL_ID,
-      messages: [
-        {
-          role: 'user',
-          content: `Based on this conversation exchange, generate a short, descriptive title (max 6 words, no quotes, no punctuation at the end):
-
-User: ${firstUserMessage.slice(0, 200)}
-AI: ${firstAiResponse.slice(0, 200)}
-
-Title:`,
-        },
-      ],
+    const response = await chatGroq.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [{
+        role: 'user',
+        content: `Generate a short title (max 6 words, no quotes) for this conversation:\nUser: ${firstUserMessage.slice(0, 200)}\nAI: ${firstAiResponse.slice(0, 200)}\nTitle:`,
+      }],
       max_tokens: 20,
       temperature: 0.5,
     });
@@ -113,29 +162,17 @@ Title:`,
 }
 
 async function extractMemoryFacts(user, recentMessages) {
-  if (recentMessages.length < 4) return [];
-
+  if (recentMessages.length < 4 || !chatInitialized) return [];
   const conversation = recentMessages
     .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
     .join('\n');
-
   try {
-    const response = await groq.chat.completions.create({
-      model: MODEL_ID,
-      messages: [
-        {
-          role: 'user',
-          content: `Analyze this conversation and extract important facts about the user that should be remembered for future conversations. Only extract genuinely meaningful personal information (name, occupation, location, preferences, important life events, ongoing projects, etc.).
-
-Conversation:
-${conversation.slice(0, 3000)}
-
-Return ONLY a JSON array of objects with "key" and "value" fields. Example:
-[{"key": "name", "value": "Alex"}, {"key": "occupation", "value": "software engineer"}]
-
-If no meaningful facts found, return an empty array: []`,
-        },
-      ],
+    const response = await chatGroq.chat.completions.create({
+      model: CHAT_MODEL,
+      messages: [{
+        role: 'user',
+        content: `Extract important personal facts about the user from this conversation. Return ONLY a JSON array like [{"key":"name","value":"Alex"}]. Return [] if nothing meaningful.\n\nConversation:\n${conversation.slice(0, 3000)}`,
+      }],
       max_tokens: 500,
       temperature: 0.3,
     });
@@ -146,7 +183,7 @@ If no meaningful facts found, return an empty array: []`,
       return Array.isArray(facts) ? facts.filter(f => f.key && f.value) : [];
     }
   } catch {
-    // Silent fail — memory extraction is non-critical
+    // Non-critical
   }
   return [];
 }
@@ -157,4 +194,6 @@ module.exports = {
   sendMessage,
   generateConversationTitle,
   extractMemoryFacts,
+  CHAT_MODEL,
+  CODE_MODEL,
 };

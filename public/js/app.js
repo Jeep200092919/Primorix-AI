@@ -7,6 +7,7 @@ const App = {
   currentConvId: null,
   conversations: [],
   isSending: false,
+  codeMode: false,
 
   // ── Storage ───────────────────────────────────────────────
 
@@ -181,6 +182,24 @@ const App = {
     document.getElementById('user-type').textContent = user.isGuest ? 'Guest session' : 'Account';
   },
 
+  toggleCodeMode() {
+    this.codeMode = !this.codeMode;
+    const btn = document.getElementById('code-mode-btn');
+    const input = document.getElementById('message-input');
+
+    if (this.codeMode) {
+      btn.classList.add('active');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Code Mode`;
+      input.placeholder = 'Ask a coding question...';
+      document.body.classList.add('code-mode');
+    } else {
+      btn.classList.remove('active');
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Code Mode`;
+      input.placeholder = 'Message Primorix AI...';
+      document.body.classList.remove('code-mode');
+    }
+  },
+
   updateMemoryIndicator() {
     const indicator = document.getElementById('memory-indicator');
     if (this.user && !this.user.isGuest) {
@@ -219,6 +238,11 @@ const App = {
     // Overlay
     document.getElementById('sidebar-overlay').addEventListener('click', () => {
       this.closeSidebarMobile();
+    });
+
+    // Code Mode toggle
+    document.getElementById('code-mode-btn').addEventListener('click', () => {
+      this.toggleCodeMode();
     });
 
     // Memory button
@@ -456,7 +480,7 @@ const App = {
     this.isSending = true;
 
     try {
-      const data = await API.sendMessage(text, this.currentConvId);
+      const data = await API.sendMessage(text, this.currentConvId, this.codeMode ? 'code' : 'chat');
 
       // Remove typing indicator
       typingEl.remove();

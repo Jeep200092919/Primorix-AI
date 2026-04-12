@@ -13,13 +13,16 @@ const {
   generateConversationTitle,
   extractMemoryFacts,
   getResolvedModelId,
+  CHAT_MODEL,
+  CODE_MODEL,
 } = require('../ai/client');
 
 const router = express.Router();
 
 // POST /api/chat/send
 router.post('/send', requireAuth, async (req, res) => {
-  const { message, conversationId } = req.body;
+  const { message, conversationId, mode } = req.body;
+  const chatMode = mode === 'code' ? 'code' : 'chat';
 
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Message cannot be empty' });
@@ -53,6 +56,7 @@ router.post('/send', requireAuth, async (req, res) => {
       memorySummary: user.memory_summary || '',
       conversationHistory: recentMessages,
       userMessage: message.trim(),
+      mode: chatMode,
     });
 
     // Save AI response to DB
@@ -118,9 +122,10 @@ router.get('/models', (req, res) => {
         id: 'primorix-1.0',
         name: 'Primorix 1.0',
         description: 'Our flagship model — powerful, fast, and memory-enabled',
-        internalModel: getResolvedModelId() || 'initializing...',
+        internalModel: CHAT_MODEL,
       },
     ],
+    codeModeModel: CODE_MODEL,
   });
 });
 

@@ -527,6 +527,50 @@ body {
   gap: 8px;
 }
 
+.code-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.code-mode-btn:hover {
+  color: #34d399;
+  border-color: rgba(52,211,153,0.4);
+  background: rgba(52,211,153,0.08);
+}
+.code-mode-btn.active {
+  color: #34d399;
+  background: rgba(52,211,153,0.12);
+  border-color: rgba(52,211,153,0.5);
+  box-shadow: 0 0 12px rgba(52,211,153,0.15);
+}
+.code-mode-btn.active::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  animation: pulse 2s infinite;
+}
+
+/* Code mode active — tint the whole interface subtly */
+body.code-mode .input-wrapper:focus-within {
+  border-color: #34d399;
+  box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
+}
+body.code-mode .message-input::placeholder {
+  color: rgba(52,211,153,0.4);
+}
+
 .memory-indicator {
   display: flex;
   align-items: center;
