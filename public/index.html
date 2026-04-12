@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Primorix AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-bg-glow"></div>
+
+  <div class="auth-container">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" fill="url(#logoGrad)" />
+          <path d="M12 20 C12 14 17 10 20 10 C23 10 28 14 28 20 C28 26 23 30 20 30" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="3" fill="white"/>
+          <path d="M20 10 L20 7 M20 33 L20 30" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          <path d="M30 20 L33 20 M7 20 L10 20" stroke="white" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#2563eb"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <span class="logo-name">Primorix</span>
+        <span class="logo-badge">AI</span>
+      </div>
+    </div>
+
+    <p class="auth-tagline">Your AI with real memory</p>
+
+    <!-- Auth Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign In</button>
+      <button class="auth-tab" data-tab="register">Create Account</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="login-form" class="auth-form active" autocomplete="on">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="login-username" placeholder="Enter your username or email" autocomplete="username" required />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password" required />
+          <button type="button" class="toggle-pwd" data-target="login-password">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="login-error" class="form-error"></div>
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="register-form" class="auth-form" autocomplete="on">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="reg-username" placeholder="Choose a username" autocomplete="username" required />
+      </div>
+      <div class="form-group">
+        <label>Email <span class="optional">(optional)</span></label>
+        <input type="email" id="reg-email" placeholder="your@email.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="reg-password" placeholder="At least 6 characters" autocomplete="new-password" required />
+          <button type="button" class="toggle-pwd" data-target="reg-password">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="register-error" class="form-error"></div>
+      <button type="submit" class="btn-primary">Create Account</button>
+    </form>
+
+    <!-- Divider -->
+    <div class="auth-divider"><span>or</span></div>
+
+    <!-- Guest Mode -->
+    <button id="guest-btn" class="btn-ghost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Continue as Guest
+    </button>
+    <p class="guest-note">Guest sessions are temporary. Create an account for permanent memory.</p>
+  </div>
+</div>
+
+<!-- ==================== APP SCREEN ==================== -->
+<div id="app-screen" class="app-screen hidden">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-icon-sm">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="18" fill="url(#logoGrad2)" />
+            <path d="M12 20 C12 14 17 10 20 10 C23 10 28 14 28 20 C28 26 23 30 20 30" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="20" cy="20" r="3" fill="white"/>
+            <defs>
+              <linearGradient id="logoGrad2" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#7c3aed"/>
+                <stop offset="100%" stop-color="#2563eb"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="sidebar-title">Primorix AI</span>
+      </div>
+      <button id="sidebar-toggle-close" class="icon-btn sidebar-close-btn" title="Close sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <button id="new-chat-btn" class="new-chat-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>
+      New Chat
+    </button>
+
+    <div class="conversations-section">
+      <div class="conversations-label">Recent</div>
+      <div id="conversations-list" class="conversations-list">
+        <div class="conversations-empty">No conversations yet.<br/>Start a new chat!</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button id="memory-btn" class="sidebar-footer-btn" title="View Memory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+        Memory
+      </button>
+      <div id="user-info" class="user-info">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div class="user-details">
+          <div class="user-name" id="user-name">User</div>
+          <div class="user-type" id="user-type">Account</div>
+        </div>
+        <button id="logout-btn" class="icon-btn logout-btn" title="Sign Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Top bar -->
+    <div class="topbar">
+      <button id="sidebar-toggle-open" class="icon-btn" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div class="model-selector-wrap">
+        <select id="model-selector" class="model-selector">
+          <option value="primorix-1.0">Primorix 1.0</option>
+        </select>
+        <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="topbar-right">
+        <div id="memory-indicator" class="memory-indicator hidden" title="Memory active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 8v4l3 3"/></svg>
+          Memory
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chat-area" class="chat-area">
+      <!-- Welcome screen -->
+      <div id="welcome-screen" class="welcome-screen">
+        <div class="welcome-logo">
+          <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+            <circle cx="40" cy="40" r="36" fill="url(#wGrad)" />
+            <path d="M24 40 C24 28 34 20 40 20 C46 20 56 28 56 40 C56 52 46 60 40 60" stroke="white" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="40" cy="40" r="6" fill="white"/>
+            <defs>
+              <linearGradient id="wGrad" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#7c3aed"/>
+                <stop offset="100%" stop-color="#2563eb"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="welcome-title">Primorix AI</h1>
+        <p class="welcome-subtitle" id="welcome-message">How can I help you today?</p>
+        <div class="welcome-suggestions" id="welcome-suggestions">
+          <button class="suggestion-chip" data-prompt="What can you help me with?">What can you help me with?</button>
+          <button class="suggestion-chip" data-prompt="Tell me something interesting">Tell me something interesting</button>
+          <button class="suggestion-chip" data-prompt="Help me write some code">Help me write some code</button>
+          <button class="suggestion-chip" data-prompt="Explain a complex topic simply">Explain a complex topic simply</button>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div id="messages-container" class="messages-container hidden"></div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="message-input"
+          class="message-input"
+          placeholder="Message Primorix AI..."
+          rows="1"
+          maxlength="10000"
+        ></textarea>
+        <button id="send-btn" class="send-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <p class="input-note">Primorix AI can make mistakes. Verify important information.</p>
+    </div>
+  </main>
+</div>
+
+<!-- ==================== MEMORY MODAL ==================== -->
+<div id="memory-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 8v4l3 3"/></svg>
+        Memory
+      </h2>
+      <button id="close-memory-modal" class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">Primorix AI remembers these facts about you across all conversations.</p>
+      <div id="memory-list" class="memory-list">
+        <div class="memory-empty">No memories yet. Start chatting and I'll remember important things about you!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+node_modules/
+primorix.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
