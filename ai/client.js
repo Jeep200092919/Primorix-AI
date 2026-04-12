@@ -108,19 +108,43 @@ Keep explanations focused and technical. You are talking to someone who wants wo
 
 // ── Core functions ────────────────────────────────────────────────────────────
 
+function buildCanvasSystemPrompt(user) {
+  const name = user.is_guest ? 'the user' : user.username;
+  return `You are Primorix AI in Canvas Mode — you generate complete, self-contained, runnable HTML applications for ${name}.
+
+RULES (follow strictly):
+- Always output a SINGLE, complete HTML file with all CSS and JavaScript embedded inline
+- Never split code across multiple blocks — one full \`\`\`html ... \`\`\` block only
+- No external files — CDN links (e.g. via unpkg or cdnjs) are allowed
+- Make it visually polished: good colors, spacing, typography
+- Add interactivity and animations where it makes sense
+- The user sees a live preview instantly — make it impressive
+- When the user asks for changes, output the FULL updated HTML file (not just the diff)
+- If asked a question that doesn't need HTML, answer normally without a code block
+
+Examples of what to build when asked:
+- "make a calculator" → fully working calculator app in HTML/CSS/JS
+- "to-do list" → interactive to-do app with add/delete/complete
+- "landing page" → beautiful responsive landing page
+- "snake game" → fully playable snake game`;
+}
+
 async function sendMessage({ user, memoryFacts, memorySummary, conversationHistory, userMessage, mode = 'chat' }) {
-  const isCodeMode = mode === 'code';
-  const client     = isCodeMode ? codeGroq : chatGroq;
-  const model      = isCodeMode ? CODE_MODEL : CHAT_MODEL;
-  const ready      = isCodeMode ? codeInitialized : chatInitialized;
+  const isCodeMode   = mode === 'code';
+  const isCanvasMode = mode === 'canvas';
+  const client       = isCodeMode ? codeGroq : chatGroq;
+  const model        = isCodeMode ? CODE_MODEL : CHAT_MODEL;
+  const ready        = isCodeMode ? codeInitialized : chatInitialized;
 
   if (!ready) {
     throw new Error('AI model not initialized. Call discoverModel() first.');
   }
 
-  const systemPrompt = isCodeMode
-    ? buildCodeSystemPrompt(user)
-    : buildChatSystemPrompt(user, memoryFacts, memorySummary);
+  const systemPrompt = isCanvasMode
+    ? buildCanvasSystemPrompt(user)
+    : isCodeMode
+      ? buildCodeSystemPrompt(user)
+      : buildChatSystemPrompt(user, memoryFacts, memorySummary);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -141,8 +165,8 @@ async function sendMessage({ user, memoryFacts, memorySummary, conversationHisto
 
   let content = response.choices[0].message.content;
 
-  // Strip <think>...</think> blocks that Qwen3 emits in code mode
-  if (isCodeMode) {
+  // Strip <think>...</think> blocks emitted by Qwen3
+  if (isCodeMode || isCanvasMode) {
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   }
 

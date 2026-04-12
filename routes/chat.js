@@ -98,7 +98,8 @@ const handleUpload = (req, res, next) => {
 router.post('/send', requireAuth, handleUpload, async (req, res) => {
   const message        = (req.body.message || '').trim();
   const conversationId = req.body.conversationId || null;
-  const mode           = req.body.mode === 'code' ? 'code' : 'chat';
+  const rawMode        = req.body.mode;
+  const mode           = rawMode === 'code' ? 'code' : rawMode === 'canvas' ? 'canvas' : 'chat';
   const uploadedFile   = req.file || null;
 
   if (!message && !uploadedFile) {
@@ -117,7 +118,8 @@ router.post('/send', requireAuth, handleUpload, async (req, res) => {
     conv = createConversation(user.id, 'New Conversation', 'primorix-1.0');
   }
 
-  const recentMessages = getRecentMessages(conv.id, mode === 'code' ? 6 : 25);
+  const historyLimit   = (mode === 'code' || mode === 'canvas') ? 6 : 25;
+  const recentMessages = getRecentMessages(conv.id, historyLimit);
   const memoryFacts    = user.is_guest ? [] : getUserMemory(user.id);
 
   // Build the display label for the user message saved to DB

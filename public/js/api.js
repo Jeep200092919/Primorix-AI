@@ -51,6 +51,7 @@ const API = {
 
   // Chat
   sendMessage(message, conversationId, mode = 'chat', file = null) {
+    if (!['chat', 'code', 'canvas'].includes(mode)) mode = 'chat';
     if (file) {
       const form = new FormData();
       form.append('message', message || '');

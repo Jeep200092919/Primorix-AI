@@ -8,6 +8,8 @@ const App = {
   conversations: [],
   isSending: false,
   codeMode: false,
+  canvasMode: false,
+  canvasHtml: null,
   attachedFile: null,
 
   // ── Storage ───────────────────────────────────────────────
@@ -217,6 +219,58 @@ const App = {
     document.getElementById('send-btn').disabled = !input.value.trim();
   },
 
+  toggleCanvasMode() {
+    this.canvasMode = !this.canvasMode;
+    const btn   = document.getElementById('canvas-mode-btn');
+    const input = document.getElementById('message-input');
+
+    if (this.canvasMode) {
+      // Turn off code mode if active
+      if (this.codeMode) this.toggleCodeMode();
+      btn.classList.add('active');
+      input.placeholder = 'Describe what to build...';
+      document.getElementById('canvas-panel').classList.add('open');
+      document.querySelector('.main-content').classList.add('canvas-open');
+    } else {
+      btn.classList.remove('active');
+      input.placeholder = 'Message Primorix AI...';
+      this.closeCanvas();
+    }
+  },
+
+  closeCanvas() {
+    this.canvasMode = false;
+    document.getElementById('canvas-mode-btn').classList.remove('active');
+    document.getElementById('canvas-panel').classList.remove('open');
+    document.querySelector('.main-content').classList.remove('canvas-open');
+    document.getElementById('message-input').placeholder = 'Message Primorix AI...';
+  },
+
+  renderCanvas(html) {
+    this.canvasHtml = html;
+    const iframe  = document.getElementById('canvas-iframe');
+    const empty   = document.getElementById('canvas-empty');
+    const status  = document.getElementById('canvas-status');
+
+    empty.classList.add('hidden');
+    iframe.classList.remove('hidden');
+    status.textContent = 'Running';
+    status.classList.add('running');
+
+    // Write HTML into iframe via srcdoc
+    iframe.srcdoc = html;
+
+    iframe.onload = () => {
+      status.textContent = 'Live';
+      status.classList.remove('running');
+    };
+  },
+
+  extractHtmlFromResponse(text) {
+    const match = text.match(/```html\s*([\s\S]*?)```/i);
+    return match ? match[1].trim() : null;
+  },
+
   toggleCodeMode() {
     this.codeMode = !this.codeMode;
     const btn = document.getElementById('code-mode-btn');
@@ -273,6 +327,25 @@ const App = {
     // Overlay
     document.getElementById('sidebar-overlay').addEventListener('click', () => {
       this.closeSidebarMobile();
+    });
+
+    // Canvas Mode toggle
+    document.getElementById('canvas-mode-btn').addEventListener('click', () => {
+      this.toggleCanvasMode();
+    });
+
+    // Canvas toolbar buttons
+    document.getElementById('canvas-close-btn').addEventListener('click', () => {
+      this.closeCanvas();
+    });
+    document.getElementById('canvas-refresh-btn').addEventListener('click', () => {
+      if (this.canvasHtml) this.renderCanvas(this.canvasHtml);
+    });
+    document.getElementById('canvas-newtab-btn').addEventListener('click', () => {
+      if (this.canvasHtml) {
+        const blob = new Blob([this.canvasHtml], { type: 'text/html' });
+        window.open(URL.createObjectURL(blob), '_blank');
+      }
     });
 
     // Code Mode toggle
@@ -535,7 +608,8 @@ const App = {
     this.isSending = true;
 
     try {
-      const data = await API.sendMessage(text, this.currentConvId, this.codeMode ? 'code' : 'chat', file);
+      const currentMode = this.canvasMode ? 'canvas' : this.codeMode ? 'code' : 'chat';
+      const data = await API.sendMessage(text, this.currentConvId, currentMode, file);
 
       // Remove typing indicator
       typingEl.remove();
@@ -552,6 +626,12 @@ const App = {
       // Add AI response
       this.appendMessage('ai', data.message.content);
       this.highlightConv(this.currentConvId);
+
+      // Auto-render HTML in canvas if canvas mode is active
+      if (this.canvasMode) {
+        const html = this.extractHtmlFromResponse(data.message.content);
+        if (html) this.renderCanvas(html);
+      }
 
     } catch (err) {
       typingEl.remove();
@@ -607,7 +687,7 @@ const App = {
       <div class="message-content">${fileHtml}${renderedContent}</div>
     `;
 
-    // Add copy buttons to code blocks
+    // Add copy + "Run in Canvas" buttons to code blocks
     if (role === 'ai') {
       el.querySelectorAll('pre').forEach(pre => {
         const wrap = document.createElement('div');
@@ -626,6 +706,22 @@ const App = {
           });
         });
         wrap.appendChild(copyBtn);
+
+        // Add "Run in Canvas" button for HTML blocks
+        const isHtml = pre.querySelector('code.language-html') ||
+                       pre.querySelector('code.hljs.language-html');
+        if (isHtml || pre.querySelector('code')?.className?.includes('html')) {
+          const runBtn = document.createElement('button');
+          runBtn.className = 'run-canvas-btn';
+          runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> Canvas`;
+          runBtn.addEventListener('click', () => {
+            const code = pre.querySelector('code');
+            const html = code?.textContent || pre.textContent;
+            if (!this.canvasMode) this.toggleCanvasMode();
+            this.renderCanvas(html);
+          });
+          wrap.appendChild(runBtn);
+        }
       });
 
       // Syntax highlight
