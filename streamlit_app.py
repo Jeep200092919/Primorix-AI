@@ -391,73 +391,229 @@ def init_session():
 # ─────────────────────────────────────────────────────────
 CUSTOM_CSS = """
 <style>
-/* Global */
-html, body, .stApp { background-color: #0f0f13; color: #e2e8f0; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Sidebar */
+/* ── Reset & global ─────────────────────────────────── */
+html, body, .stApp {
+    background-color: #0f0f13 !important;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Hide Streamlit chrome */
+#MainMenu, header[data-testid="stHeader"], footer,
+.stDeployButton, [data-testid="stToolbar"],
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+    display: none !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
 [data-testid="stSidebar"] {
     background-color: #141420 !important;
-    border-right: 1px solid #1e1e2e;
+    border-right: 1px solid #1e1e2e !important;
 }
-[data-testid="stSidebar"] .stButton > button {
-    background: #1e1e3a;
-    color: #e2e8f0;
-    border: 1px solid #2d2d4e;
-    border-radius: 8px;
-    text-align: left;
-    font-size: 13px;
-}
-[data-testid="stSidebar"] .stButton > button:hover {
-    background: #7c3aed;
-    border-color: #7c3aed;
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 16px;
 }
 
-/* Main chat area */
-.stChatMessage {
-    background: #1a1a2e;
-    border-radius: 12px;
-    border: 1px solid #1e1e2e;
-    padding: 12px 16px;
-    margin-bottom: 8px;
+/* All sidebar buttons */
+[data-testid="stSidebar"] .stButton > button {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: 1px solid #1e1e2e !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-family: 'Inter', sans-serif !important;
+    text-align: left !important;
+    padding: 6px 12px !important;
+    transition: all 0.15s ease !important;
+    width: 100% !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(124,58,237,0.12) !important;
+    border-color: rgba(124,58,237,0.35) !important;
+    color: #e2e8f0 !important;
+}
+/* New Chat button — special */
+[data-testid="stSidebar"] .stButton[data-testid="baseButton-secondary"]:first-of-type > button,
+button[kind="secondary"][key="new_chat"] {
+    background: rgba(124,58,237,0.12) !important;
+    border-color: rgba(124,58,237,0.3) !important;
+    color: #a78bfa !important;
+    font-weight: 500 !important;
+}
+/* Primary = active conversation */
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+    background: rgba(124,58,237,0.18) !important;
+    border-color: rgba(124,58,237,0.5) !important;
+    color: #c4b5fd !important;
+    font-weight: 600 !important;
+}
+
+/* Mode toggle buttons */
+.mode-btns { display: flex; gap: 6px; margin: 6px 0 10px; }
+.mode-btns .stButton { flex: 1; }
+.mode-btns .stButton > button {
+    font-size: 12px !important;
+    padding: 5px 4px !important;
+    text-align: center !important;
+    justify-content: center !important;
+}
+.mode-btn-chat   > button { color: #a78bfa !important; border-color: rgba(124,58,237,0.3) !important; }
+.mode-btn-code   > button { color: #4ade80 !important; border-color: rgba(74,222,128,0.3) !important; }
+.mode-btn-canvas > button { color: #fb923c !important; border-color: rgba(251,146,60,0.3) !important; }
+.mode-btn-chat-active   > button { background: rgba(124,58,237,0.2) !important; color: #c4b5fd !important; border-color: rgba(124,58,237,0.6) !important; }
+.mode-btn-code-active   > button { background: rgba(74,222,128,0.15) !important; color: #4ade80 !important; border-color: rgba(74,222,128,0.6) !important; }
+.mode-btn-canvas-active > button { background: rgba(251,146,60,0.15) !important; color: #fb923c !important; border-color: rgba(251,146,60,0.6) !important; }
+
+/* Sidebar caption text */
+[data-testid="stSidebar"] .stCaption { color: #475569 !important; font-size: 10px !important; letter-spacing: 0.08em; font-weight: 600; text-transform: uppercase; }
+
+/* Sidebar expander */
+[data-testid="stSidebar"] [data-testid="stExpander"] {
+    background: transparent !important;
+    border: 1px solid #1e1e2e !important;
+    border-radius: 8px !important;
+}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    color: #94a3b8 !important;
+    font-size: 13px !important;
+}
+
+/* Dividers */
+hr { border-color: #1e1e2e !important; margin: 10px 0 !important; }
+
+/* ── Main content area ───────────────────────────────── */
+.main .block-container {
+    padding-top: 16px !important;
+    padding-bottom: 0 !important;
+    max-width: 900px;
+}
+
+/* ── Chat messages ───────────────────────────────────── */
+[data-testid="stChatMessage"] {
+    border-radius: 14px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 6px !important;
+    border: 1px solid #1e1e2e !important;
+    background: #16162a !important;
+    gap: 10px !important;
+}
+/* User message — purple tint + right feel */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    background: linear-gradient(135deg, rgba(124,58,237,0.12), rgba(37,99,235,0.1)) !important;
+    border-color: rgba(124,58,237,0.2) !important;
+    flex-direction: row-reverse !important;
+    text-align: right !important;
+    margin-left: 10% !important;
+}
+/* AI message */
+[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    background: #16162a !important;
+    border-color: #1e1e2e !important;
+    margin-right: 5% !important;
+}
+/* Avatar icons */
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarAssistant"] {
+    border-radius: 50% !important;
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+}
+[data-testid="stChatMessageAvatarUser"] {
+    background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+    color: white !important;
+}
+[data-testid="stChatMessageAvatarAssistant"] {
+    background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+    color: white !important;
+}
+/* Message text */
+[data-testid="stChatMessageContent"] p {
+    color: #e2e8f0 !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+}
+[data-testid="stChatMessageContent"] pre {
+    background: #0d1117 !important;
+    border: 1px solid #1e1e2e !important;
+    border-radius: 8px !important;
+    margin: 8px 0 !important;
+}
+[data-testid="stChatMessageContent"] code {
+    font-size: 13px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+[data-testid="stChatMessageContent"] p code {
+    background: rgba(124,58,237,0.12) !important;
+    color: #a78bfa !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+}
+
+/* ── Chat input ──────────────────────────────────────── */
+[data-testid="stChatInput"] {
+    background: transparent !important;
 }
 [data-testid="stChatInput"] > div {
     background: #1a1a2e !important;
     border: 1px solid #2d2d4e !important;
-    border-radius: 12px !important;
+    border-radius: 14px !important;
+    transition: border-color 0.2s !important;
+}
+[data-testid="stChatInput"] > div:focus-within {
+    border-color: rgba(124,58,237,0.6) !important;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.1) !important;
+}
+[data-testid="stChatInput"] textarea {
+    color: #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+}
+[data-testid="stChatInput"] textarea::placeholder { color: #475569 !important; }
+[data-testid="stChatInput"] button {
+    background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+    border-radius: 8px !important;
+    border: none !important;
 }
 
-/* Welcome screen */
-.welcome-box {
-    text-align: center;
-    padding: 80px 20px 40px;
-    color: #64748b;
-}
-.welcome-icon { font-size: 48px; margin-bottom: 16px; }
-.welcome-title { font-size: 20px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; }
-.welcome-sub { font-size: 14px; }
-
-/* Mode badges */
+/* ── Mode badge (top of main area) ──────────────────── */
 .badge {
-    display: inline-block;
-    padding: 3px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
 }
-.badge-canvas { background: rgba(251,146,60,.2); color: #fb923c; }
-.badge-code   { background: rgba(34,197,94,.2);  color: #22c55e; }
-.badge-chat   { background: rgba(124,58,237,.2); color: #a78bfa; }
+.badge-canvas { background: rgba(251,146,60,.15); color: #fb923c; border: 1px solid rgba(251,146,60,.3); }
+.badge-code   { background: rgba(74,222,128,.12); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+.badge-chat   { background: rgba(124,58,237,.12); color: #a78bfa; border: 1px solid rgba(124,58,237,.3); }
 
-/* Canvas panel */
+/* ── Welcome screen ──────────────────────────────────── */
+.welcome-box { text-align:center; padding:80px 20px 40px; }
+.welcome-icon { font-size:52px; margin-bottom:20px; }
+.welcome-title { font-size:22px; font-weight:700; color:#c4b5fd; margin-bottom:10px; }
+.welcome-sub { font-size:14px; color:#475569; }
+
+/* ── Canvas panel ────────────────────────────────────── */
 .canvas-panel {
-    background: #1a1a2e;
+    background: #16162a;
     border: 1px solid #2d2d4e;
-    border-radius: 12px;
+    border-radius: 14px;
     overflow: hidden;
 }
 .canvas-empty {
-    height: 480px;
+    height: 460px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -466,40 +622,82 @@ html, body, .stApp { background-color: #0f0f13; color: #e2e8f0; }
     text-align: center;
 }
 
-/* Auth */
-.auth-logo {
-    text-align: center;
-    padding: 32px 0 20px;
-}
-.auth-logo .name { font-size: 28px; font-weight: 700; color: #e2e8f0; }
+/* ── Auth screen ─────────────────────────────────────── */
+.auth-logo { text-align:center; padding:40px 0 16px; }
+.auth-logo .name { font-size:30px; font-weight:700; color:#e2e8f0; letter-spacing:-0.5px; }
 .auth-logo .badge-ai {
-    font-size: 13px; font-weight: 600; color: #7c3aed;
-    background: rgba(124,58,237,.15); padding: 2px 8px;
-    border-radius: 4px; margin-left: 6px;
+    font-size:13px; font-weight:700; color:#7c3aed;
+    background:rgba(124,58,237,.15); padding:3px 9px;
+    border-radius:5px; margin-left:7px; border:1px solid rgba(124,58,237,.3);
 }
-.auth-tagline { color: #94a3b8; text-align: center; margin-bottom: 24px; }
+.auth-tagline { color:#64748b; text-align:center; margin-bottom:24px; font-size:14px; }
 
-/* Divider */
-hr { border-color: #1e1e2e !important; }
-
-/* Inputs */
+/* ── Inputs everywhere ───────────────────────────────── */
 .stTextInput input, .stTextArea textarea {
     background: #1a1a2e !important;
     color: #e2e8f0 !important;
     border: 1px solid #2d2d4e !important;
     border-radius: 8px !important;
+    font-family: 'Inter', sans-serif !important;
 }
 .stTextInput input:focus, .stTextArea textarea:focus {
     border-color: #7c3aed !important;
-    box-shadow: 0 0 0 2px rgba(124,58,237,.2) !important;
+    box-shadow: 0 0 0 2px rgba(124,58,237,.15) !important;
+}
+.stTextInput label, .stTextArea label { color: #64748b !important; font-size: 12px !important; }
+
+/* ── Tabs (auth screen) ──────────────────────────────── */
+[data-testid="stTabs"] [data-testid="stTab"] {
+    background: transparent !important;
+    color: #64748b !important;
+    border-color: #1e1e2e !important;
+    font-size: 13px !important;
+}
+[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] {
+    color: #a78bfa !important;
+    border-color: #7c3aed !important;
 }
 
-/* File uploader */
-[data-testid="stFileUploader"] {
-    background: #1a1a2e;
-    border: 1px dashed #2d2d4e;
-    border-radius: 8px;
+/* ── Form submit buttons ─────────────────────────────── */
+.stFormSubmitButton > button {
+    background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', sans-serif !important;
 }
+.stFormSubmitButton > button:hover {
+    opacity: 0.9 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ── Info/error boxes ────────────────────────────────── */
+[data-testid="stAlert"] {
+    background: rgba(124,58,237,0.08) !important;
+    border: 1px solid rgba(124,58,237,0.2) !important;
+    border-radius: 8px !important;
+    color: #c4b5fd !important;
+}
+
+/* ── File uploader ───────────────────────────────────── */
+[data-testid="stFileUploader"] section {
+    background: #1a1a2e !important;
+    border: 1px dashed #2d2d4e !important;
+    border-radius: 8px !important;
+}
+[data-testid="stExpander"] {
+    background: #141420 !important;
+    border: 1px solid #1e1e2e !important;
+    border-radius: 10px !important;
+}
+[data-testid="stExpander"] summary { color: #64748b !important; font-size: 13px !important; }
+
+/* ── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2d2d4e; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
 </style>
 """
 
@@ -582,16 +780,28 @@ def show_sidebar():
 
         st.divider()
 
-        # Mode selector
+        # Mode selector — toggle buttons
         st.caption("MODE")
-        mode_opts = ["💬  Chat", "💻  Code", "🎨  Canvas"]
-        mode_map  = {"💬  Chat": "chat", "💻  Code": "code", "🎨  Canvas": "canvas"}
-        rev_map   = {v: k for k, v in mode_map.items()}
-        selected = st.radio("mode", mode_opts, index=mode_opts.index(rev_map[st.session_state.mode]), label_visibility="collapsed")
-        new_mode = mode_map[selected]
-        if new_mode != st.session_state.mode:
-            st.session_state.mode = new_mode
-            st.rerun()
+        mode = st.session_state.mode
+        mc1, mc2, mc3 = st.columns(3)
+        with mc1:
+            css = "mode-btn-chat-active" if mode == "chat" else "mode-btn-chat"
+            st.markdown(f'<div class="mode-btns {css}">', unsafe_allow_html=True)
+            if st.button("💬 Chat", key="mb_chat", use_container_width=True):
+                st.session_state.mode = "chat"; st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        with mc2:
+            css = "mode-btn-code-active" if mode == "code" else "mode-btn-code"
+            st.markdown(f'<div class="mode-btns {css}">', unsafe_allow_html=True)
+            if st.button("💻 Code", key="mb_code", use_container_width=True):
+                st.session_state.mode = "code"; st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+        with mc3:
+            css = "mode-btn-canvas-active" if mode == "canvas" else "mode-btn-canvas"
+            st.markdown(f'<div class="mode-btns {css}">', unsafe_allow_html=True)
+            if st.button("🎨", key="mb_canvas", use_container_width=True):
+                st.session_state.mode = "canvas"; st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
         st.divider()
 
@@ -731,17 +941,23 @@ def show_app():
             messages = []
 
         if not messages:
-            st.markdown("""
+            mode_hints = {
+                "chat": "Ask me anything — I remember who you are across conversations.",
+                "code": "Paste an error, describe a feature, or ask me to write code.",
+                "canvas": 'Say "make a calculator", "snake game", or "landing page".',
+            }
+            st.markdown(f"""
             <div class="welcome-box">
                 <div class="welcome-icon">✨</div>
                 <div class="welcome-title">How can I help you today?</div>
-                <div class="welcome-sub">Start a conversation below</div>
+                <div class="welcome-sub">{mode_hints.get(st.session_state.mode, "")}</div>
             </div>
             """, unsafe_allow_html=True)
         else:
             for msg in messages:
                 role = "assistant" if msg["role"] == "model" else "user"
-                with st.chat_message(role):
+                avatar = "✨" if role == "assistant" else "👤"
+                with st.chat_message(role, avatar=avatar):
                     st.markdown(msg["content"])
 
     # ── Canvas panel ──────────────────────────────────────
