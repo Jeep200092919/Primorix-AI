@@ -785,13 +785,17 @@ const App = {
 
   async openMemoryModal() {
     document.getElementById('memory-modal').classList.remove('hidden');
-    const list = document.getElementById('memory-list');
+    const list    = document.getElementById('memory-list');
+    const addForm = document.getElementById('memory-add-form');
+    const addErr  = document.getElementById('memory-add-error');
     list.innerHTML = '<div class="memory-empty">Loading...</div>';
+    addErr.classList.remove('visible');
 
     try {
       const data = await API.getMemory();
 
       if (data.isGuest) {
+        addForm.classList.add('hidden');
         list.innerHTML = `
           <div class="guest-memory-banner">
             <p>Memory is only available for registered users. Create a free account to let Primorix AI truly remember you across all conversations.</p>
@@ -803,37 +807,39 @@ const App = {
         return;
       }
 
-      if (!data.facts || data.facts.length === 0) {
-        list.innerHTML = '<div class="memory-empty">No memories yet. Start chatting and I\'ll remember important things about you!</div>';
-        return;
-      }
+      addForm.classList.remove('hidden');
+      this.renderMemoryList(list, data.facts);
 
-      list.innerHTML = data.facts.map(f => `
-        <div class="memory-item" data-key="${this.escHtml(f.memory_key)}">
-          <div class="memory-item-content">
-            <div class="memory-key">${this.escHtml(f.memory_key)}</div>
-            <div class="memory-value">${this.escHtml(f.memory_value)}</div>
-          </div>
-          <button class="memory-del" data-key="${this.escHtml(f.memory_key)}" title="Forget this">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      `).join('');
-
-      list.querySelectorAll('.memory-del').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const key = btn.dataset.key;
-          try {
-            await API.deleteMemory(key);
-            btn.closest('.memory-item').remove();
-            if (!list.querySelector('.memory-item')) {
-              list.innerHTML = '<div class="memory-empty">No memories yet.</div>';
-            }
-          } catch {}
-        });
+      // Wire up the Add Memory button (only once)
+      const addBtn = document.getElementById('memory-add-btn');
+      const newBtn = addBtn.cloneNode(true); // remove old listeners
+      addBtn.parentNode.replaceChild(newBtn, addBtn);
+      newBtn.addEventListener('click', async () => {
+        const key   = document.getElementById('memory-add-key').value.trim();
+        const value = document.getElementById('memory-add-value').value.trim();
+        addErr.classList.remove('visible');
+        if (!key || !value) {
+          addErr.textContent = 'Both label and value are required.';
+          addErr.classList.add('visible');
+          return;
+        }
+        try {
+          const saved = await API.addMemory(key, value);
+          document.getElementById('memory-add-key').value = '';
+          document.getElementById('memory-add-value').value = '';
+          // Refresh the list
+          const fresh = await API.getMemory();
+          this.renderMemoryList(list, fresh.facts);
+        } catch (err) {
+          addErr.textContent = err.message;
+          addErr.classList.add('visible');
+        }
       });
+
+      // Submit on Enter in value field
+      document.getElementById('memory-add-value').onkeydown = e => {
+        if (e.key === 'Enter') document.getElementById('memory-add-btn').click();
+      };
 
     } catch (err) {
       list.innerHTML = `<div class="memory-empty">Failed to load memory: ${err.message}</div>`;
@@ -841,6 +847,37 @@ const App = {
   },
 
   // ── Utilities ─────────────────────────────────────────────
+
+  renderMemoryList(list, facts) {
+    if (!facts || facts.length === 0) {
+      list.innerHTML = '<div class="memory-empty">No memories yet. Start chatting or add one above!</div>';
+      return;
+    }
+    list.innerHTML = facts.map(f => `
+      <div class="memory-item">
+        <div class="memory-item-content">
+          <div class="memory-key">${this.escHtml(f.memory_key)}</div>
+          <div class="memory-value">${this.escHtml(f.memory_value)}</div>
+        </div>
+        <button class="memory-del" data-key="${this.escHtml(f.memory_key)}" title="Forget this">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.memory-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          await API.deleteMemory(btn.dataset.key);
+          btn.closest('.memory-item').remove();
+          if (!list.querySelector('.memory-item')) {
+            list.innerHTML = '<div class="memory-empty">No memories yet. Add one above!</div>';
+          }
+        } catch {}
+      });
+    });
+  },
 
   escHtml(str) {
     return String(str)

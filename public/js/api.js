@@ -68,6 +68,9 @@ const API = {
   getMemory() {
     return this._request('GET', '/api/chat/memory');
   },
+  addMemory(key, value) {
+    return this._request('POST', '/api/chat/memory', { key, value });
+  },
   deleteMemory(key) {
     return this._request('DELETE', `/api/chat/memory/${encodeURIComponent(key)}`);
   },

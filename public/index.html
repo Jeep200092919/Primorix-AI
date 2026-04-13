@@ -311,6 +311,20 @@
     </div>
     <div class="modal-body">
       <p class="modal-desc">Primorix AI remembers these facts about you across all conversations.</p>
+
+      <!-- Manual add form -->
+      <div id="memory-add-form" class="memory-add-form">
+        <div class="memory-add-row">
+          <input type="text" id="memory-add-key" placeholder="Label (e.g. name, job, city)" maxlength="50" />
+          <input type="text" id="memory-add-value" placeholder="Value (e.g. Daniel, developer, NYC)" maxlength="500" />
+          <button id="memory-add-btn" class="memory-add-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+            Add
+          </button>
+        </div>
+        <div id="memory-add-error" class="memory-add-error"></div>
+      </div>
+
       <div id="memory-list" class="memory-list">
         <div class="memory-empty">No memories yet. Start chatting and I'll remember important things about you!</div>
       </div>

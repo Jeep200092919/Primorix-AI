@@ -165,11 +165,13 @@ router.post('/send', requireAuth, handleUpload, async (req, res) => {
         .catch(() => {});
     }
 
+    // Extract memory after every 2 exchanges (4 messages) for registered users
     const totalMessages = recentMessages.length + 2;
-    if (!user.is_guest && totalMessages % 8 === 0) {
-      extractMemoryFacts(user, getRecentMessages(conv.id, 16)).then(facts => {
+    const shouldExtract = !user.is_guest && totalMessages >= 4 && totalMessages % 4 === 0;
+    if (shouldExtract) {
+      extractMemoryFacts(user, getRecentMessages(conv.id, 8)).then(facts => {
         facts.forEach(f => { if (f.key && f.value) setUserMemory(user.id, f.key, f.value); });
-      }).catch(() => {});
+      }).catch(err => console.error('[memory extract]', err));
     }
 
     res.json({
@@ -187,6 +189,17 @@ router.post('/send', requireAuth, handleUpload, async (req, res) => {
 router.get('/memory', requireAuth, (req, res) => {
   if (req.user.is_guest) return res.json({ facts: [], isGuest: true });
   res.json({ facts: getUserMemory(req.user.id), isGuest: false });
+});
+
+// ── POST /api/chat/memory — manually add a memory fact ───────────────────────
+router.post('/memory', requireAuth, (req, res) => {
+  if (req.user.is_guest) return res.status(403).json({ error: 'Create an account to use memory' });
+  const { key, value } = req.body;
+  if (!key || !value) return res.status(400).json({ error: 'Key and value are required' });
+  const cleanKey = key.trim().toLowerCase().replace(/\s+/g, '_').slice(0, 50);
+  const cleanVal = value.trim().slice(0, 500);
+  setUserMemory(req.user.id, cleanKey, cleanVal);
+  res.json({ success: true, memory_key: cleanKey, memory_value: cleanVal });
 });
 
 // ── DELETE /api/chat/memory/:key ──────────────────────────────────────────────
