@@ -1220,7 +1220,7 @@ body.code-mode .message-input::placeholder {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--bg);
 }
 .canvas-empty {
   flex: 1;
