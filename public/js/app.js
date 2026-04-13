@@ -10,6 +10,7 @@ const App = {
   codeMode: false,
   canvasMode: false,
   canvasHtml: null,
+  canvasStore: {},   // { convId: html } — per-conversation canvas state
   attachedFile: null,
 
   // ── Storage ───────────────────────────────────────────────
@@ -248,22 +249,35 @@ const App = {
 
   renderCanvas(html) {
     this.canvasHtml = html;
-    const iframe  = document.getElementById('canvas-iframe');
-    const empty   = document.getElementById('canvas-empty');
-    const status  = document.getElementById('canvas-status');
+    // Save per conversation
+    if (this.currentConvId) this.canvasStore[this.currentConvId] = html;
+
+    const iframe = document.getElementById('canvas-iframe');
+    const empty  = document.getElementById('canvas-empty');
+    const status = document.getElementById('canvas-status');
 
     empty.classList.add('hidden');
     iframe.classList.remove('hidden');
     status.textContent = 'Running';
     status.classList.add('running');
 
-    // Write HTML into iframe via srcdoc
     iframe.srcdoc = html;
-
     iframe.onload = () => {
       status.textContent = 'Live';
       status.classList.remove('running');
     };
+  },
+
+  clearCanvasView() {
+    this.canvasHtml = null;
+    const iframe = document.getElementById('canvas-iframe');
+    const empty  = document.getElementById('canvas-empty');
+    const status = document.getElementById('canvas-status');
+    iframe.srcdoc = '';
+    iframe.classList.add('hidden');
+    empty.classList.remove('hidden');
+    status.textContent = 'Ready';
+    status.classList.remove('running');
   },
 
   extractHtmlFromResponse(text) {
@@ -305,6 +319,7 @@ const App = {
     document.getElementById('new-chat-btn').addEventListener('click', () => {
       this.currentConvId = null;
       this.showWelcome();
+      this.clearCanvasView();
       this.highlightConv(null);
       this.closeSidebarMobile();
     });
@@ -337,6 +352,10 @@ const App = {
     // Canvas toolbar buttons
     document.getElementById('canvas-close-btn').addEventListener('click', () => {
       this.closeCanvas();
+    });
+    document.getElementById('canvas-clear-btn').addEventListener('click', () => {
+      if (this.currentConvId) delete this.canvasStore[this.currentConvId];
+      this.clearCanvasView();
     });
     document.getElementById('canvas-refresh-btn').addEventListener('click', () => {
       if (this.canvasHtml) this.renderCanvas(this.canvasHtml);
@@ -544,6 +563,14 @@ const App = {
       });
 
       this.scrollToBottom(false);
+
+      // Restore or clear this conversation's canvas
+      const savedHtml = this.canvasStore[id];
+      if (savedHtml) {
+        this.renderCanvas(savedHtml);
+      } else {
+        this.clearCanvasView();
+      }
     } catch (err) {
       console.error('Failed to load conversation:', err);
     }
@@ -552,10 +579,13 @@ const App = {
   async deleteConversation(id) {
     try {
       await API.deleteConversation(id);
+      // Remove saved canvas for this conversation
+      delete this.canvasStore[id];
       this.conversations = this.conversations.filter(c => c.id !== id);
       if (this.currentConvId === id) {
         this.currentConvId = null;
         this.showWelcome();
+        this.clearCanvasView();
       }
       this.renderConversationList();
     } catch (err) {

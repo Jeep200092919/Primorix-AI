@@ -1213,6 +1213,7 @@ body.code-mode .message-input::placeholder {
   transition: color var(--transition), background var(--transition);
 }
 .canvas-btn:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+.canvas-btn-danger:hover { color: var(--danger) !important; }
 
 .canvas-body {
   flex: 1;
