@@ -43,8 +43,15 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────
 # Constants
 # ─────────────────────────────────────────────────────────
-CHAT_API_KEY = os.getenv("GROQ_API_KEY", "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")
-CODE_API_KEY = os.getenv("GROQ_CODE_API_KEY", "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")
+def _get_secret(key):
+    """Try st.secrets first, then env vars."""
+    try:
+        return st.secrets[key]
+    except Exception:
+        return os.getenv(key, "")
+
+CHAT_API_KEY = _get_secret("GROQ_API_KEY")
+CODE_API_KEY = _get_secret("GROQ_CODE_API_KEY")
 CHAT_MODEL   = "llama-3.3-70b-versatile"
 CODE_MODEL   = "qwen/qwen3-32b"
 VISION_MODELS = [
@@ -54,8 +61,8 @@ VISION_MODELS = [
 ]
 DB_PATH = "primorix.db"
 
-chat_client = Groq(api_key=CHAT_API_KEY)
-code_client  = Groq(api_key=CODE_API_KEY)
+chat_client = Groq(api_key=CHAT_API_KEY) if CHAT_API_KEY else None
+code_client  = Groq(api_key=CODE_API_KEY) if CODE_API_KEY else None
 
 # ─────────────────────────────────────────────────────────
 # Database
@@ -213,30 +220,41 @@ def build_chat_prompt(user, memory_facts):
     if not is_guest and memory_facts:
         lines = "\n".join(f"  - {f['memory_key']}: {f['memory_value']}" for f in memory_facts)
         mem_section = f"\nWHAT YOU KNOW ABOUT THIS USER:\n{lines}\n"
-    return f"""You are Primorix AI, a highly capable and personable AI assistant with genuine long-term memory.
+    return f"""You are Primorix AI, a highly capable and personable AI assistant with genuine long-term memory. You remember users across conversations and build a real understanding of who they are, what they care about, and how best to help them.
 
-You are currently talking to {'a guest user (not logged in)' if is_guest else user['username'] + ' (a registered user)'}.{mem_section}
+You are currently talking to {'a guest user (not logged in)' if is_guest else user['username'] + ' (a registered user)'}.
+{mem_section}
 CORE BEHAVIOR:
 - Be warm, helpful, and genuinely intelligent
-- Reference things you know about the user naturally when relevant
+- Reference things you know about the user naturally when relevant — don't be robotic about it
+- If the user tells you something personal or important, remember it (the system automatically stores key facts)
+- For guest users: encourage them to create an account so you can truly remember them across sessions
 - Be concise unless depth is requested
-- Format code with triple backticks and the language name
-- If asked to remember something, confirm you noted it
+- Format code blocks with triple backticks and the language name
+- If asked to remember something specific, confirm that you've noted it
 
-Your personality: Curious, helpful, slightly witty, never condescending."""
+Your personality: Curious, helpful, slightly witty, never condescending. You genuinely care about giving good answers."""
 
 def build_code_prompt(user):
     name = "the user" if user.get("is_guest") else user["username"]
-    return f"""You are Primorix AI in Code Mode — an expert software engineer helping {name}.
+    return f"""You are Primorix AI in Code Mode — an expert software engineer and coding assistant helping {name}.
+
+YOUR CAPABILITIES:
+- Write clean, efficient, production-ready code in any language
+- Debug and fix errors with clear explanations of the root cause
+- Review code for bugs, security issues, and performance improvements
+- Explain complex programming concepts clearly
+- Suggest best practices, design patterns, and architecture
 
 CODE GUIDELINES:
-- Always use fenced code blocks with the correct language tag
-- Write complete, working code — never truncate or use placeholders
-- Add inline comments only where logic isn't obvious
-- Prefer modern, idiomatic patterns for each language
-- Point out edge cases or security issues
+- Always use fenced code blocks with the correct language tag (e.g. ```python)
+- Write complete, working code — never truncate or use placeholders like "// rest of code here"
+- Add brief inline comments only where the logic isn't obvious
+- Prefer modern syntax and idiomatic patterns for each language
+- Point out potential edge cases, security issues, or performance concerns
+- If the user has an error, diagnose the root cause before providing the fix
 
-Keep explanations focused and technical."""
+Keep explanations focused and technical. You are talking to someone who wants working code, not filler."""
 
 def build_canvas_prompt(user):
     name = "the user" if user.get("is_guest") else user["username"]
@@ -244,11 +262,19 @@ def build_canvas_prompt(user):
 
 RULES (follow strictly):
 - Always output a SINGLE, complete HTML file with all CSS and JavaScript embedded inline
-- One full ```html ... ``` block only — never split code
-- CDN links (e.g. unpkg, cdnjs) are allowed
+- Never split code across multiple blocks — one full ```html ... ``` block only
+- No external files — CDN links (e.g. via unpkg or cdnjs) are allowed
 - Make it visually polished: good colors, spacing, typography
 - Add interactivity and animations where it makes sense
-- When asked for changes, output the FULL updated HTML file"""
+- The user sees a live preview instantly — make it impressive
+- When the user asks for changes, output the FULL updated HTML file (not just the diff)
+- If asked a question that doesn't need HTML, answer normally without a code block
+
+Examples of what to build when asked:
+- "make a calculator" → fully working calculator app in HTML/CSS/JS
+- "to-do list" → interactive to-do app with add/delete/complete
+- "landing page" → beautiful responsive landing page
+- "snake game" → fully playable snake game"""
 
 def strip_think(text):
     return re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
@@ -265,7 +291,11 @@ def extract_html(text):
     return None
 
 def call_ai(user, history, user_message, mode, memory_facts=None):
+    if not chat_client:
+        raise RuntimeError("Groq API key not configured. Add GROQ_API_KEY to Streamlit Secrets.")
     if mode == "code":
+        if not code_client:
+            raise RuntimeError("Code API key not configured. Add GROQ_CODE_API_KEY to Streamlit Secrets.")
         system = build_code_prompt(user)
         client, model, temp, max_tok = code_client, CODE_MODEL, 0.3, 4096
     elif mode == "canvas":
@@ -797,12 +827,50 @@ def show_app():
         st.rerun()
 
 # ─────────────────────────────────────────────────────────
+# Setup screen (shown when API keys are missing)
+# ─────────────────────────────────────────────────────────
+def show_setup():
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align:center;padding:40px 0 20px">
+        <div style="font-size:28px;font-weight:700;color:#e2e8f0">⚙️ Setup Required</div>
+        <p style="color:#94a3b8;margin-top:8px">Add your Groq API keys to run Primorix AI</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col = st.columns([1, 2, 1])[1]
+    with col:
+        st.error("**Missing API Keys** — Groq API keys are not configured.")
+        st.markdown("""
+### How to fix this on Streamlit Cloud:
+
+1. Go to your app on **[share.streamlit.io](https://share.streamlit.io)**
+2. Click **⋮ menu → Settings → Secrets**
+3. Paste this (replace with your real keys):
+
+```toml
+GROQ_API_KEY = "gsk_your_chat_key_here"
+GROQ_CODE_API_KEY = "gsk_your_code_key_here"
+```
+
+4. Click **Save** — the app will restart automatically
+
+---
+Get free API keys at **[console.groq.com](https://console.groq.com)**
+        """)
+
+        st.divider()
+        st.markdown("**Running locally?** Create a `.streamlit/secrets.toml` file with the same content above.")
+
+# ─────────────────────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────────────────────
 init_db()
 init_session()
 
-if not st.session_state.user:
+if not CHAT_API_KEY:
+    show_setup()
+elif not st.session_state.user:
     show_auth()
 else:
     show_app()
