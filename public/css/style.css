@@ -1292,7 +1292,7 @@ body.code-mode .message-input::placeholder {
   height: 100%;
   border: none;
   flex: 1;
-  background: white;
+  background: transparent;
 }
 
 /* "Run in Canvas" button on HTML code blocks */

@@ -249,7 +249,6 @@ const App = {
 
   renderCanvas(html) {
     this.canvasHtml = html;
-    // Save per conversation
     if (this.currentConvId) this.canvasStore[this.currentConvId] = html;
 
     const iframe = document.getElementById('canvas-iframe');
@@ -261,11 +260,22 @@ const App = {
     status.textContent = 'Running';
     status.classList.add('running');
 
-    iframe.srcdoc = html;
-    iframe.onload = () => {
+    // Use document.write() — universally reliable, works in all browsers
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
       status.textContent = 'Live';
       status.classList.remove('running');
-    };
+    } catch (err) {
+      // Fallback: srcdoc
+      iframe.onload = () => {
+        status.textContent = 'Live';
+        status.classList.remove('running');
+      };
+      iframe.srcdoc = html;
+    }
   },
 
   clearCanvasView() {
@@ -273,7 +283,10 @@ const App = {
     const iframe = document.getElementById('canvas-iframe');
     const empty  = document.getElementById('canvas-empty');
     const status = document.getElementById('canvas-status');
-    iframe.srcdoc = '';
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open(); doc.write(''); doc.close();
+    } catch { iframe.srcdoc = ''; }
     iframe.classList.add('hidden');
     empty.classList.remove('hidden');
     status.textContent = 'Ready';
@@ -281,8 +294,21 @@ const App = {
   },
 
   extractHtmlFromResponse(text) {
-    const match = text.match(/```html\s*([\s\S]*?)```/i);
-    return match ? match[1].trim() : null;
+    // Catch all common formats the AI might use
+    let m;
+    // ```html ... ``` (any case)
+    m = text.match(/```(?:html|HTML|htm)\s*([\s\S]*?)```/);
+    if (m) return m[1].trim();
+    // ``` ... ``` containing a full HTML doc
+    m = text.match(/```\s*(<!DOCTYPE[\s\S]*?)```/i);
+    if (m) return m[1].trim();
+    // Raw <!DOCTYPE html in response without code fences
+    m = text.match(/(<!DOCTYPE\s+html[\s\S]*?<\/html>)/i);
+    if (m) return m[1].trim();
+    // <html>...</html> without DOCTYPE
+    m = text.match(/(<html[\s\S]*?<\/html>)/i);
+    if (m) return m[1].trim();
+    return null;
   },
 
   toggleCodeMode() {
